@@ -279,6 +279,7 @@
       isSpinning: false,
       selectorActive: false,
       stopRequested: false,
+      stopCountdown: null,
       actionMode: "spin",
       lastWin: null,
       doubleNext: false,
@@ -289,9 +290,7 @@
       preShuffleTimer: null,
       steps: 0,
       speed: 120,
-      stopAt: null,
-      audioCtx: null,
-      audioReady: false
+      audioCtx: null
     };
 
     function buildRingIndices(n) {
@@ -368,16 +367,13 @@
     function unlockAudio() {
       const ctx = ensureAudio();
       if (!ctx) return;
-
-      const start = () => {
+      const resume = () => {
         if (ctx.state === "suspended") {
           ctx.resume().catch((err) => console.warn("Audio resume failed", err));
         }
-        state.audioReady = true;
       };
-
-      start();
-      setTimeout(start, 50);
+      resume();
+      setTimeout(resume, 50);
     }
 
     function beep(step = 0) {
@@ -442,12 +438,7 @@
       try {
         const res = await fetch(SHEET_URL);
         const csv = await res.text();
-        const cleaned = csv
-          .replace(/^\uFEFF/, "")
-          .replace(/\r\n/g, "\n")
-          .replace(/\r/g, "\n")
-          .trim();
-
+        const cleaned = csv.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
         const lines = cleaned.split("\n").filter(Boolean);
         if (!lines.length) return;
 
@@ -473,20 +464,20 @@
 
     function resetBoard() {
       unlockAudio();
+      if (state.tickTimer) clearTimeout(state.tickTimer);
+      if (state.preShuffleTimer) clearInterval(state.preShuffleTimer);
+
       state.activeIdx = null;
       state.isSpinning = false;
       state.selectorActive = false;
       state.stopRequested = false;
+      state.stopCountdown = null;
       state.actionMode = "spin";
       state.lastWin = null;
       state.doubleNext = false;
       state.currentPrize = "";
       state.steps = 0;
       state.speed = 120;
-      state.stopAt = null;
-
-      if (state.tickTimer) clearTimeout(state.tickTimer);
-      if (state.preShuffleTimer) clearInterval(state.preShuffleTimer);
       state.tickTimer = null;
       state.preShuffleTimer = null;
       render();
@@ -522,11 +513,10 @@
     function requestStop() {
       unlockAudio();
       if (state.actionMode !== "stop" || state.stopRequested) return;
-
       state.stopRequested = true;
 
-      if (state.selectorActive) {
-        state.stopAt = state.steps + 2 + Math.floor(Math.random() * 4);
+      if (state.selectorActive && state.stopCountdown === null) {
+        state.stopCountdown = 3 + Math.floor(Math.random() * 3);
       }
 
       render();
@@ -537,9 +527,9 @@
       state.currentPrize = state.ringPrizes[state.activeIdx]?.label || "";
       state.steps = 0;
       state.speed = state.randomMode ? 140 : 110;
-      state.stopAt = state.stopRequested ? (2 + Math.floor(Math.random() * 4)) : null;
       state.selectorActive = true;
       state.isSpinning = true;
+      state.stopCountdown = state.stopRequested ? (3 + Math.floor(Math.random() * 3)) : null;
       render();
 
       const tick = () => {
@@ -555,27 +545,26 @@
         state.currentPrize = state.ringPrizes[next]?.label || "";
         state.steps += 1;
 
-        if (state.stopRequested && state.stopAt === null) {
-          state.stopAt = state.steps + 2 + Math.floor(Math.random() * 4);
+        if (state.stopRequested && state.stopCountdown === null) {
+          state.stopCountdown = 3 + Math.floor(Math.random() * 3);
         }
 
         beep(state.steps);
 
-        if (state.stopAt !== null) {
-          const left = state.stopAt - state.steps;
-          if (left <= 3) state.speed = Math.min(440, state.speed + 90);
-          else if (left <= 5) state.speed = Math.min(400, state.speed + 60);
-          else if (left <= 8) state.speed = Math.min(360, state.speed + 40);
+        if (state.stopCountdown !== null) {
+          state.stopCountdown -= 1;
+          state.speed = Math.min(440, state.speed + 85);
         } else if (state.steps < 10) {
           state.speed = Math.max(state.randomMode ? 90 : 60, state.speed - 8);
         }
 
         render();
 
-        if (state.stopAt !== null && state.steps >= state.stopAt) {
+        if (state.stopCountdown !== null && state.stopCountdown <= 0) {
           state.isSpinning = false;
           state.selectorActive = false;
           state.stopRequested = false;
+          state.stopCountdown = null;
           state.tickTimer = null;
           setTimeout(finalizeWin, 220);
           return;
@@ -595,10 +584,10 @@
       state.isSpinning = true;
       state.selectorActive = false;
       state.stopRequested = false;
-      state.stopAt = null;
+      state.stopCountdown = null;
       state.actionMode = "stop";
-      let ticks = 0;
 
+      let ticks = 0;
       state.preShuffleTimer = setInterval(() => {
         state.prizes = shuffleArray(state.prizes);
         state.ringPrizes = state.prizes.slice(0, ring.length);
