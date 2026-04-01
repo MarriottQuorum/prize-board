@@ -290,7 +290,8 @@
       steps: 0,
       speed: 120,
       stopAt: null,
-      audioCtx: null
+      audioCtx: null,
+      audioReady: false
     };
 
     function buildRingIndices(n) {
@@ -367,9 +368,16 @@
     function unlockAudio() {
       const ctx = ensureAudio();
       if (!ctx) return;
-      if (ctx.state === "suspended") {
-        ctx.resume().catch((err) => console.warn("Audio resume failed", err));
-      }
+
+      const start = () => {
+        if (ctx.state === "suspended") {
+          ctx.resume().catch((err) => console.warn("Audio resume failed", err));
+        }
+        state.audioReady = true;
+      };
+
+      start();
+      setTimeout(start, 50);
     }
 
     function beep(step = 0) {
@@ -389,16 +397,16 @@
       o1.frequency.linearRampToValueAtTime(freq * 1.1, ctx.currentTime + 0.05);
       o2.frequency.setValueAtTime(freq * 1.35, ctx.currentTime);
       o2.frequency.linearRampToValueAtTime(freq * 1.55, ctx.currentTime + 0.05);
-      g.gain.setValueAtTime(0.04, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.09);
+      g.gain.setValueAtTime(0.09, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.12);
 
       o1.connect(g);
       o2.connect(g);
       g.connect(ctx.destination);
       o1.start();
       o2.start();
-      o1.stop(ctx.currentTime + 0.1);
-      o2.stop(ctx.currentTime + 0.1);
+      o1.stop(ctx.currentTime + 0.12);
+      o2.stop(ctx.currentTime + 0.12);
     }
 
     function winSound() {
@@ -411,22 +419,22 @@
         const o = ctx.createOscillator();
         const h = ctx.createOscillator();
         const g = ctx.createGain();
-        const t = ctx.currentTime + i * 0.07;
+        const t = ctx.currentTime + i * 0.09;
 
         o.type = "triangle";
         h.type = "sine";
         o.frequency.value = f;
         h.frequency.value = f * 1.5;
-        g.gain.setValueAtTime(0.05, t);
-        g.gain.exponentialRampToValueAtTime(0.00001, t + 0.28);
+        g.gain.setValueAtTime(0.08, t);
+        g.gain.exponentialRampToValueAtTime(0.00001, t + 0.34);
 
         o.connect(g);
         h.connect(g);
         g.connect(ctx.destination);
         o.start(t);
         h.start(t);
-        o.stop(t + 0.3);
-        h.stop(t + 0.3);
+        o.stop(t + 0.35);
+        h.stop(t + 0.35);
       });
     }
 
@@ -513,10 +521,14 @@
 
     function requestStop() {
       unlockAudio();
-      if (!state.selectorActive || state.stopRequested || !state.isSpinning) return;
+      if (state.actionMode !== "stop" || state.stopRequested) return;
+
       state.stopRequested = true;
-      state.stopAt = state.steps + 2 + Math.floor(Math.random() * 4);
-      state.speed = Math.min(460, state.speed + 140);
+
+      if (state.selectorActive) {
+        state.stopAt = state.steps + 2 + Math.floor(Math.random() * 4);
+      }
+
       render();
     }
 
@@ -525,7 +537,7 @@
       state.currentPrize = state.ringPrizes[state.activeIdx]?.label || "";
       state.steps = 0;
       state.speed = state.randomMode ? 140 : 110;
-      state.stopAt = null;
+      state.stopAt = state.stopRequested ? (2 + Math.floor(Math.random() * 4)) : null;
       state.selectorActive = true;
       state.isSpinning = true;
       render();
@@ -542,6 +554,10 @@
         state.activeIdx = next;
         state.currentPrize = state.ringPrizes[next]?.label || "";
         state.steps += 1;
+
+        if (state.stopRequested && state.stopAt === null) {
+          state.stopAt = state.steps + 2 + Math.floor(Math.random() * 4);
+        }
 
         beep(state.steps);
 
@@ -599,6 +615,7 @@
     }
 
     function toggleFullScreen() {
+      unlockAudio();
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch((err) => console.warn("Fullscreen failed", err));
       } else {
@@ -638,9 +655,9 @@
         top.appendChild(btn);
       } else {
         const btn = document.createElement("button");
-        btn.className = `stop-sign${!state.selectorActive || state.stopRequested ? " disabled" : ""}`;
-        btn.textContent = "STOP";
-        btn.disabled = !state.selectorActive || state.stopRequested || !state.isSpinning;
+        btn.className = `stop-sign${state.stopRequested ? " disabled" : ""}`;
+        btn.textContent = state.stopRequested ? "STOPPING" : "STOP";
+        btn.disabled = state.stopRequested;
         btn.addEventListener("click", requestStop);
         top.appendChild(btn);
       }
@@ -650,7 +667,7 @@
 
       const result = document.createElement("div");
       result.className = "result";
-      result.textContent = state.lastWin || "Ready to spin?";
+      result.textContent = state.lastWin || (state.stopRequested ? "Stopping..." : "Ready to spin?");
 
       const toggles = document.createElement("div");
       toggles.className = "toggles";
@@ -728,6 +745,17 @@
     }
 
     document.addEventListener("fullscreenchange", render);
+
+    const oneTimeUnlock = () => {
+      unlockAudio();
+      document.removeEventListener("pointerdown", oneTimeUnlock);
+      document.removeEventListener("touchstart", oneTimeUnlock);
+      document.removeEventListener("click", oneTimeUnlock);
+    };
+
+    document.addEventListener("pointerdown", oneTimeUnlock, { passive: true });
+    document.addEventListener("touchstart", oneTimeUnlock, { passive: true });
+    document.addEventListener("click", oneTimeUnlock, { passive: true });
 
     state.ringPrizes = state.prizes.slice(0, ring.length);
     render();
