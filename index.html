@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prize Board</title>
+  <style>
+    :root {
+      --bg1: #141414;
+      --bg2: #030303;
+      --panel: rgba(14, 14, 14, 0.88);
+      --border: rgba(255, 255, 255, 0.10);
+      --text: #ffffff;
+      --muted: rgba(255,255,255,0.82);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .app {
+      width: 100%;
+      min-height: calc(100vh - 20px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .board {
+      width: min(94vw, 76vh);
+      height: min(94vw, 76vh);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .tile {
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 8px;
+      color: #fff;
+      user-select: none;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .tile-text {
+      font-weight: 800;
+      line-height: 1.02;
+      font-size: clamp(12px, 1.8vw, 22px);
+      word-break: break-word;
+      max-width: 100%;
+    }
+
+    .tile.active {
+      outline: 4px solid #fff;
+      outline-offset: -4px;
+      box-shadow:
+        0 0 0 0 rgba(255,255,255,0),
+        0 0 28px 7px rgba(255,255,255,0.55),
+        var(--shadow);
+      animation: pulseGlow 0.95s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 0 14px 3px rgba(255,255,255,0.18), var(--shadow); }
+      50% { box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 0 28px 7px rgba(255,255,255,0.55), var(--shadow); }
+      100% { box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 0 14px 3px rgba(255,255,255,0.18), var(--shadow); }
+    }
+
+    .center-card {
+      grid-column: 2 / span 3;
+      grid-row: 2 / span 3;
+      border-radius: 28px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 12px 14px;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .top-controls,
+    .mid-wrap,
+    .bottom-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mid-wrap {
+      flex-direction: column;
+      text-align: center;
+      gap: 10px;
+      min-height: 0;
+      padding: 6px 2px;
+    }
+
+    .main-btn {
+      width: clamp(7.5rem, 13vw, 11rem);
+      height: clamp(7.5rem, 13vw, 11rem);
+      border: 0;
+      color: #fff;
+      font-weight: 900;
+      font-size: clamp(1.6rem, 3vw, 3rem);
+      letter-spacing: 0.02em;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .main-btn.spin {
+      border-radius: 999px;
+      background: #18a949;
+    }
+
+    .main-btn.stop {
+      background: #d62828;
+      clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+      border-radius: 12px;
+    }
+
+    .main-btn.disabled {
+      background: #5a5a5a;
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .result {
+      font-weight: 900;
+      font-size: clamp(1.15rem, 2.9vw, 2.65rem);
+      line-height: 1.04;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.45);
+      max-width: 96%;
+      word-break: break-word;
+    }
+
+    .toggles {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toggles label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .bottom-controls {
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .control-btn {
+      border: 0;
+      border-radius: 14px;
+      background: #232323;
+      color: #fff;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      touch-action: manipulation;
+    }
+
+    .note {
+      margin-top: 12px;
+      font-size: clamp(13px, 1.4vw, 18px);
+      font-weight: 700;
+      text-align: center;
+      opacity: 0.9;
+      max-width: 900px;
+    }
+
+    .fs-hint {
+      margin-top: 4px;
+      font-size: 11px;
+      text-align: center;
+      opacity: 0.62;
+    }
+
+    @media (orientation: portrait) {
+      body { padding: 8px; }
+      .app { min-height: calc(100vh - 16px); }
+      .board {
+        width: min(96vw, 68vh);
+        height: min(96vw, 68vh);
+        gap: 8px;
+      }
+      .tile { border-radius: 18px; padding: 7px; }
+      .tile-text { font-size: clamp(11px, 2.5vw, 20px); }
+      .center-card { padding: 10px 12px; }
+      .main-btn {
+        width: clamp(6.8rem, 17vw, 9rem);
+        height: clamp(6.8rem, 17vw, 9rem);
+        font-size: clamp(1.35rem, 4vw, 2.2rem);
+      }
+      .result { font-size: clamp(1rem, 4vw, 2.1rem); }
+      .control-btn { padding: 9px 12px; font-size: 0.82rem; }
+    }
+
+    @media (max-width: 700px) {
+      .board { gap: 8px; }
+      .tile { border-radius: 18px; }
+      .tile-text { font-size: clamp(10px, 2.8vw, 18px); }
+      .result { font-size: clamp(1rem, 4vw, 1.9rem); }
+      .toggles { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="board" class="board"></div>
+    <div class="note">Thank you for staying with us.</div>
+    <div class="fs-hint">Tip: Full Screen hides most browser chrome. For a true TV-style display, use F11 as well.</div>
+  </div>
+
+  <script>
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQpo4vwOp-EYpc8dlKORT3iJNoNOe1gp-WXE5iWpgDK4kYd9j5Kcwkvlh9kElb7MlHSYx47Cv_QbECw/pub?output=csv";
+    const DEFAULT_PRIZES = [
+      { label: "1,000 Points", color: "#0284c7" },
+      { label: "Free Appetizer", color: "#f59e0b" },
+      { label: "500 Points", color: "#16a34a" },
+      { label: "1 Free Night", color: "#d946ef" },
+      { label: "5,000 Points", color: "#0369a1" },
+      { label: "Suite Upgrade", color: "#059669" },
+      { label: "$25 F&B Credit", color: "#d97706" },
+      { label: "Late Checkout", color: "#9333ea" },
+      { label: "2 Drink Vouchers", color: "#4f46e5" },
+      { label: "Room Snack Box", color: "#15803d" },
+      { label: "500 Bonus Points", color: "#0ea5e9" },
+      { label: "Spin Again", color: "#ec4899" },
+      { label: "Breakfast for Two", color: "#65a30d" },
+      { label: "Spin Again & Win Double", color: "#e11d48" },
+      { label: "1,500 Points", color: "#0284c7" },
+      { label: "Chef's Dessert", color: "#db2777" }
+    ];
+
+    const N = 5;
+    const boardEl = document.getElementById("board");
+
+    function buildRingIndices(n) {
+      const idx = [];
+      for (let c = 0; c < n; c += 1) idx.push(c);                    // top row
+      for (let r = 1; r < n; r += 1) idx.push(r * n + (n - 1));      // right side
+      for (let c = n - 2; c >= 0; c -= 1) idx.push((n - 1) * n + c); // bottom row
+      for (let r = n - 2; r >= 1; r -= 1) idx.push(r * n);           // left side
+      return idx;
+    }
+
+    const ringCellIndices = buildRingIndices(N);
+    const cellToRingPos = new Map(ringCellIndices.map((cell, i) => [cell, i]));
+
+    const state = {
+      prizes: [...DEFAULT_PRIZES],
+      ringPrizes: [],
+      activeRingPos: 0,
+      isSpinning: false,
+      stopRequested: false,
+      stopCountdown: null,
+      actionMode: "spin",
+      lastWin: null,
+      doubleNext: false,
+      randomMode: false,
+      muted: false,
+      currentPrize: "",
+      tickTimer: null,
+      shuffleTimer: null,
+      speed: 120,
+      audioCtx: null
+    };
+
+    const ui = {
+      tilesByCell: new Map(),
+      mainButton: null,
+      result: null,
+      randomToggle: null,
+      muteToggle: null,
+      fullscreenBtn: null
+    };
+
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function parseCsvLine(line) {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const ch = line[i];
+        const next = line[i + 1];
+        if (ch === '"') {
+          if (inQuotes && next === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === "," && !inQuotes) {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    }
+
+    function colorToCss(color) {
+      const map = {
+        "bg-sky-600": "#0284c7",
+        "bg-sky-700": "#0369a1",
+        "bg-amber-500": "#f59e0b",
+        "bg-amber-600": "#d97706",
+        "bg-green-600": "#16a34a",
+        "bg-green-700": "#15803d",
+        "bg-fuchsia-600": "#d946ef",
+        "bg-emerald-600": "#059669",
+        "bg-purple-600": "#9333ea",
+        "bg-indigo-600": "#4f46e5",
+        "bg-pink-600": "#db2777",
+        "bg-lime-600": "#65a30d",
+        "bg-rose-600": "#e11d48",
+        "bg-rose-700": "#be123c"
+      };
+      return map[color] || color || "#0284c7";
+    }
+
+    function ensureAudio() {
+      if (!state.audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) state.audioCtx = new Ctx();
+      }
+      return state.audioCtx;
+    }
+
+    function unlockAudio() {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const resume = () => {
+        if (ctx.state === "suspended") {
+          ctx.resume().catch(() => {});
+        }
+      };
+      resume();
+      setTimeout(resume, 50);
+    }
+
+    function beep(step = 0) {
+      if (state.muted) return;
+      const ctx = ensureAudio();
+      if (!ctx || ctx.state !== "running") return;
+
+      const scale = [523.25, 587.33, 659.25, 783.99, 987.77];
+      const freq = scale[step % scale.length];
+      const o1 = ctx.createOscillator();
+      const o2 = ctx.createOscillator();
+      const g = ctx.createGain();
+
+      o1.type = "square";
+      o2.type = "square";
+      o1.frequency.setValueAtTime(freq * 0.9, ctx.currentTime);
+      o1.frequency.linearRampToValueAtTime(freq * 1.1, ctx.currentTime + 0.05);
+      o2.frequency.setValueAtTime(freq * 1.35, ctx.currentTime);
+      o2.frequency.linearRampToValueAtTime(freq * 1.55, ctx.currentTime + 0.05);
+      g.gain.setValueAtTime(0.08, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.12);
+
+      o1.connect(g);
+      o2.connect(g);
+      g.connect(ctx.destination);
+      o1.start();
+      o2.start();
+      o1.stop(ctx.currentTime + 0.12);
+      o2.stop(ctx.currentTime + 0.12);
+    }
+
+    function winSound() {
+      if (state.muted) return;
+      const ctx = ensureAudio();
+      if (!ctx || ctx.state !== "running") return;
+      const notes = [523.25, 587.33, 659.25, 783.99, 987.77, 1046.5];
+      notes.forEach((f, i) => {
+        const o = ctx.createOscillator();
+        const h = ctx.createOscillator();
+        const g = ctx.createGain();
+        const t = ctx.currentTime + i * 0.09;
+        o.type = "triangle";
+        h.type = "sine";
+        o.frequency.value = f;
+        h.frequency.value = f * 1.5;
+        g.gain.setValueAtTime(0.08, t);
+        g.gain.exponentialRampToValueAtTime(0.00001, t + 0.34);
+        o.connect(g);
+        h.connect(g);
+        g.connect(ctx.destination);
+        o.start(t);
+        h.start(t);
+        o.stop(t + 0.35);
+        h.stop(t + 0.35);
+      });
+    }
+
+    function clearTimers() {
+      if (state.tickTimer) clearTimeout(state.tickTimer);
+      if (state.shuffleTimer) clearInterval(state.shuffleTimer);
+      state.tickTimer = null;
+      state.shuffleTimer = null;
+    }
+
+    function updateActiveTile() {
+      for (const [cellIndex, tile] of ui.tilesByCell.entries()) {
+        const ringPos = cellToRingPos.get(cellIndex);
+        tile.classList.toggle("active", ringPos === state.activeRingPos);
+      }
+    }
+
+    function updateCenter() {
+      if (state.actionMode === "spin") {
+        ui.mainButton.textContent = "SPIN";
+        ui.mainButton.className = "main-btn spin" + (state.isSpinning ? " disabled" : "");
+        ui.mainButton.disabled = state.isSpinning;
+      } else {
+        ui.mainButton.textContent = state.stopRequested ? "STOPPING" : "STOP";
+        ui.mainButton.className = "main-btn stop" + (state.stopRequested ? " disabled" : "");
+        ui.mainButton.disabled = state.stopRequested;
+      }
+
+      ui.result.textContent = state.lastWin || (state.stopRequested ? "Stopping..." : "Ready to spin?");
+      ui.fullscreenBtn.textContent = document.fullscreenElement ? "Exit Full Screen" : "Full Screen";
+      ui.randomToggle.checked = state.randomMode;
+      ui.muteToggle.checked = state.muted;
+    }
+
+    function render() {
+      updateActiveTile();
+      updateCenter();
+    }
+
+    function applyPrizeTextAndColors() {
+      for (const [cellIndex, tile] of ui.tilesByCell.entries()) {
+        const ringPos = cellToRingPos.get(cellIndex);
+        const prize = state.ringPrizes[ringPos];
+        tile.style.background = prize?.color || "transparent";
+        tile.firstChild.textContent = prize?.label || "";
+      }
+    }
+
+    function finalizeWin() {
+      const win = state.currentPrize || state.ringPrizes[state.activeRingPos]?.label || "Mystery";
+
+      if (win === "Spin Again") {
+        state.lastWin = "Spin Again!";
+        state.actionMode = "spin";
+        winSound();
+        render();
+        return;
+      }
+
+      if (win === "Spin Again & Win Double") {
+        state.lastWin = "Spin Again & Win Double!";
+        state.doubleNext = true;
+        state.actionMode = "spin";
+        winSound();
+        render();
+        return;
+      }
+
+      state.lastWin = state.doubleNext ? `${win} (DOUBLE!)` : win;
+      state.doubleNext = false;
+      state.actionMode = "spin";
+      winSound();
+      render();
+    }
+
+    function stepOnce() {
+      if (state.randomMode) {
+        let next = Math.floor(Math.random() * ringCellIndices.length);
+        if (next === state.activeRingPos) next = (next + 1) % ringCellIndices.length;
+        state.activeRingPos = next;
+      } else {
+        state.activeRingPos = (state.activeRingPos + 1) % ringCellIndices.length;
+      }
+
+      state.currentPrize = state.ringPrizes[state.activeRingPos]?.label || "";
+      beep(state.activeRingPos);
+
+      if (state.stopRequested) {
+        state.stopCountdown -= 1;
+        state.speed = Math.min(420, state.speed + 70);
+
+        if (state.stopCountdown <= 0) {
+          state.isSpinning = false;
+          state.stopRequested = false;
+          state.stopCountdown = null;
+          state.tickTimer = null;
+          render();
+          setTimeout(finalizeWin, 220);
+          return;
+        }
+      } else {
+        state.speed = Math.max(state.randomMode ? 90 : 60, state.speed - 6);
+      }
+
+      render();
+      state.tickTimer = setTimeout(stepOnce, state.speed);
+    }
+
+    function startSpinLoop() {
+      state.isSpinning = true;
+      state.speed = state.randomMode ? 140 : 110;
+      state.tickTimer = setTimeout(stepOnce, state.speed);
+      render();
+    }
+
+    function startSpin() {
+      unlockAudio();
+      if (state.actionMode !== "spin" || state.isSpinning) return;
+
+      clearTimers();
+      state.lastWin = null;
+      state.isSpinning = true;
+      state.stopRequested = false;
+      state.stopCountdown = null;
+      state.actionMode = "stop";
+      render();
+
+      let ticks = 0;
+      state.shuffleTimer = setInterval(() => {
+        state.prizes = shuffleArray(state.prizes);
+        state.ringPrizes = state.prizes.slice(0, ringCellIndices.length);
+        applyPrizeTextAndColors();
+        ticks += 1;
+        beep(ticks);
+
+        if (ticks >= 12) {
+          clearInterval(state.shuffleTimer);
+          state.shuffleTimer = null;
+          state.activeRingPos = Math.floor(Math.random() * ringCellIndices.length);
+          state.currentPrize = state.ringPrizes[state.activeRingPos]?.label || "";
+          render();
+          startSpinLoop();
+        }
+      }, 60);
+    }
+
+    function requestStop(ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      unlockAudio();
+      if (state.actionMode !== "stop" || state.stopRequested) return;
+      state.stopRequested = true;
+      state.stopCountdown = 4;
+      render();
+    }
+
+    function resetBoard() {
+      unlockAudio();
+      clearTimers();
+      state.activeRingPos = 0;
+      state.isSpinning = false;
+      state.stopRequested = false;
+      state.stopCountdown = null;
+      state.actionMode = "spin";
+      state.lastWin = null;
+      state.doubleNext = false;
+      state.currentPrize = "";
+      state.speed = 120;
+      render();
+    }
+
+    function toggleFullScreen() {
+      unlockAudio();
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+      setTimeout(render, 50);
+    }
+
+    function buildBoard() {
+      boardEl.innerHTML = "";
+      ui.tilesByCell = new Map();
+
+      for (let cellIndex = 0; cellIndex < N * N; cellIndex += 1) {
+        const r = Math.floor(cellIndex / N);
+        const c = cellIndex % N;
+        const inCenter = r >= 1 && r <= 3 && c >= 1 && c <= 3;
+
+        if (inCenter && r === 1 && c === 1) {
+          const center = document.createElement("div");
+          center.className = "center-card";
+
+          const top = document.createElement("div");
+          top.className = "top-controls";
+
+          const mainButton = document.createElement("button");
+          mainButton.className = "main-btn spin";
+          mainButton.type = "button";
+          mainButton.addEventListener("click", () => {
+            if (state.actionMode === "spin") startSpin();
+            else requestStop();
+          });
+          mainButton.addEventListener("pointerdown", (e) => {
+            if (state.actionMode === "stop") requestStop(e);
+          });
+          top.appendChild(mainButton);
+          ui.mainButton = mainButton;
+
+          const middle = document.createElement("div");
+          middle.className = "mid-wrap";
+
+          const result = document.createElement("div");
+          result.className = "result";
+          middle.appendChild(result);
+          ui.result = result;
+
+          const toggles = document.createElement("div");
+          toggles.className = "toggles";
+
+          const randomLabel = document.createElement("label");
+          const randomToggle = document.createElement("input");
+          randomToggle.type = "checkbox";
+          randomToggle.addEventListener("change", () => {
+            unlockAudio();
+            state.randomMode = randomToggle.checked;
+          });
+          randomLabel.appendChild(randomToggle);
+          randomLabel.appendChild(document.createTextNode(" Random path"));
+          ui.randomToggle = randomToggle;
+
+          const muteLabel = document.createElement("label");
+          const muteToggle = document.createElement("input");
+          muteToggle.type = "checkbox";
+          muteToggle.addEventListener("change", () => {
+            unlockAudio();
+            state.muted = muteToggle.checked;
+          });
+          muteLabel.appendChild(muteToggle);
+          muteLabel.appendChild(document.createTextNode(" Mute"));
+          ui.muteToggle = muteToggle;
+
+          toggles.appendChild(randomLabel);
+          toggles.appendChild(muteLabel);
+          middle.appendChild(toggles);
+
+          const bottom = document.createElement("div");
+          bottom.className = "bottom-controls";
+
+          const reset = document.createElement("button");
+          reset.className = "control-btn";
+          reset.type = "button";
+          reset.innerHTML = "&#x21bb; Reset";
+          reset.addEventListener("click", resetBoard);
+
+          const fullscreen = document.createElement("button");
+          fullscreen.className = "control-btn";
+          fullscreen.type = "button";
+          fullscreen.addEventListener("click", toggleFullScreen);
+          ui.fullscreenBtn = fullscreen;
+
+          bottom.appendChild(reset);
+          bottom.appendChild(fullscreen);
+
+          center.appendChild(top);
+          center.appendChild(middle);
+          center.appendChild(bottom);
+          boardEl.appendChild(center);
+          continue;
+        }
+
+        if (inCenter) continue;
+
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        const text = document.createElement("div");
+        text.className = "tile-text";
+        tile.appendChild(text);
+
+        boardEl.appendChild(tile);
+        ui.tilesByCell.set(cellIndex, tile);
+      }
+    }
+
+    async function loadSheet() {
+      try {
+        const res = await fetch(SHEET_URL);
+        const csv = await res.text();
+        const cleaned = csv
+          .replace(/^\uFEFF/, "")
+          .replace(/\r\n/g, "\n")
+          .replace(/\r/g, "\n")
+          .trim();
+
+        const lines = cleaned.split("\n").filter(Boolean);
+        if (lines.length) {
+          const rows = lines[0].toLowerCase().includes("label") ? lines.slice(1) : lines;
+          const parsed = rows
+            .map((line) => {
+              const cols = parseCsvLine(line);
+              const label = (cols[0] || "").trim();
+              const color = colorToCss((cols[1] || "bg-sky-600").trim());
+              return label ? { label, color } : null;
+            })
+            .filter(Boolean)
+            .slice(0, ringCellIndices.length);
+
+          if (parsed.length) state.prizes = parsed;
+        }
+      } catch (err) {
+        console.warn("Failed to load sheet prizes", err);
+      }
+
+      state.ringPrizes = state.prizes.slice(0, ringCellIndices.length);
+      applyPrizeTextAndColors();
+      render();
+    }
+
+    document.addEventListener("fullscreenchange", render);
+
+    const oneTimeUnlock = () => {
+      unlockAudio();
+      document.removeEventListener("pointerdown", oneTimeUnlock);
+      document.removeEventListener("touchstart", oneTimeUnlock);
+      document.removeEventListener("click", oneTimeUnlock);
+    };
+
+    document.addEventListener("pointerdown", oneTimeUnlock, { passive: true });
+    document.addEventListener("touchstart", oneTimeUnlock, { passive: true });
+    document.addEventListener("click", oneTimeUnlock, { passive: true });
+
+    state.prizes = shuffleArray(state.prizes);
+    state.ringPrizes = state.prizes.slice(0, ringCellIndices.length);
+
+    buildBoard();
+    applyPrizeTextAndColors();
+    render();
+    loadSheet();
+  </script>
+</body>
+</html>
