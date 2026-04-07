@@ -13,6 +13,7 @@
       --text: #ffffff;
       --muted: rgba(255,255,255,0.82);
       --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --board-size: min(94vw, 76vh);
     }
 
     * { box-sizing: border-box; }
@@ -29,7 +30,8 @@
       display: grid;
       place-items: center;
       padding: 10px;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     .app {
@@ -42,8 +44,8 @@
     }
 
     .board {
-      width: min(94vw, 76vh);
-      height: min(94vw, 76vh);
+      width: var(--board-size);
+      height: var(--board-size);
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       grid-template-rows: repeat(5, 1fr);
@@ -193,6 +195,18 @@
       touch-action: manipulation;
     }
 
+    .board-image-wrap {
+      width: var(--board-size);
+      margin-top: 18px;
+    }
+
+    .board-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 16px;
+    }
+
     .note {
       margin-top: 12px;
       font-size: clamp(13px, 1.4vw, 18px);
@@ -210,11 +224,14 @@
     }
 
     @media (orientation: portrait) {
+      :root {
+        --board-size: min(96vw, 68vh);
+      }
       body { padding: 8px; }
       .app { min-height: calc(100vh - 16px); }
       .board {
-        width: min(96vw, 68vh);
-        height: min(96vw, 68vh);
+        width: var(--board-size);
+        height: var(--board-size);
         gap: 8px;
       }
       .tile { border-radius: 18px; padding: 7px; }
@@ -241,6 +258,11 @@
 <body>
   <div class="app">
     <div id="board" class="board"></div>
+
+    <div class="board-image-wrap">
+      <img class="board-image" src="thank-you.png" alt="Marriott Bonvoy thank you graphic" />
+    </div>
+
     <div class="note">Thank you for staying with us.</div>
     <div class="fs-hint">Tip: Full Screen hides most browser chrome. For a true TV-style display, use F11 as well.</div>
   </div>
