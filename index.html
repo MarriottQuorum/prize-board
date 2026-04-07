@@ -109,12 +109,17 @@
       justify-content: center;
     }
 
+    .top-controls {
+      min-height: 3.25rem;
+      padding-top: 2px;
+    }
+
     .mid-wrap {
       flex-direction: column;
       text-align: center;
-      gap: 10px;
+      gap: 12px;
       min-height: 0;
-      padding: 6px 2px;
+      padding: 4px 2px;
     }
 
     .main-btn {
@@ -123,7 +128,7 @@
       border: 0;
       color: #fff;
       font-weight: 900;
-      font-size: clamp(1.6rem, 3vw, 3rem);
+      font-size: clamp(1.45rem, 2.7vw, 2.6rem);
       letter-spacing: 0.02em;
       box-shadow: var(--shadow);
       cursor: pointer;
@@ -152,10 +157,15 @@
       cursor: not-allowed;
     }
 
+    .main-btn.stopping {
+      font-size: clamp(1.05rem, 2vw, 1.8rem);
+      letter-spacing: 0.01em;
+    }
+
     .result {
       font-weight: 900;
-      font-size: clamp(1.15rem, 2.9vw, 2.65rem);
-      line-height: 1.04;
+      font-size: clamp(1rem, 2.2vw, 2.15rem);
+      line-height: 1.05;
       text-shadow: 0 2px 6px rgba(0,0,0,0.45);
       max-width: 96%;
       word-break: break-word;
@@ -178,8 +188,19 @@
     }
 
     .bottom-controls {
-      gap: 10px;
+      gap: 8px 10px;
       flex-wrap: wrap;
+      flex-direction: column;
+      padding-bottom: 2px;
+    }
+
+    .bottom-toggles-row,
+    .bottom-buttons-row {
+      display: flex;
+      gap: 10px 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
     }
 
     .control-btn {
@@ -242,16 +263,18 @@
         height: clamp(6.8rem, 17vw, 9rem);
         font-size: clamp(1.35rem, 4vw, 2.2rem);
       }
-      .result { font-size: clamp(1rem, 4vw, 2.1rem); }
+      .result { font-size: clamp(0.95rem, 3.5vw, 1.7rem); }
       .control-btn { padding: 9px 12px; font-size: 0.82rem; }
+      .main-btn.stopping { font-size: clamp(0.95rem, 3vw, 1.35rem); }
     }
 
     @media (max-width: 700px) {
       .board { gap: 8px; }
       .tile { border-radius: 18px; }
       .tile-text { font-size: clamp(10px, 2.8vw, 18px); }
-      .result { font-size: clamp(1rem, 4vw, 1.9rem); }
+      .result { font-size: clamp(0.95rem, 3.6vw, 1.6rem); }
       .toggles { font-size: 11px; }
+      .main-btn.stopping { font-size: clamp(0.9rem, 3vw, 1.25rem); }
     }
   </style>
 </head>
@@ -422,8 +445,8 @@
       o1.frequency.linearRampToValueAtTime(freq * 1.1, ctx.currentTime + 0.05);
       o2.frequency.setValueAtTime(freq * 1.35, ctx.currentTime);
       o2.frequency.linearRampToValueAtTime(freq * 1.55, ctx.currentTime + 0.05);
-      g.gain.setValueAtTime(0.08, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.12);
+      g.gain.setValueAtTime(0.2, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.14);
 
       o1.connect(g);
       o2.connect(g);
@@ -448,8 +471,8 @@
         h.type = "sine";
         o.frequency.value = f;
         h.frequency.value = f * 1.5;
-        g.gain.setValueAtTime(0.08, t);
-        g.gain.exponentialRampToValueAtTime(0.00001, t + 0.34);
+        g.gain.setValueAtTime(0.18, t);
+        g.gain.exponentialRampToValueAtTime(0.00001, t + 0.38);
         o.connect(g);
         h.connect(g);
         g.connect(ctx.destination);
@@ -481,7 +504,7 @@
         ui.mainButton.disabled = state.isSpinning;
       } else {
         ui.mainButton.textContent = state.stopRequested ? "STOPPING" : "STOP";
-        ui.mainButton.className = "main-btn stop" + (state.stopRequested ? " disabled" : "");
+        ui.mainButton.className = "main-btn stop" + (state.stopRequested ? " disabled stopping" : "");
         ui.mainButton.disabled = state.stopRequested;
       }
 
@@ -656,6 +679,14 @@
           const top = document.createElement("div");
           top.className = "top-controls";
 
+          const result = document.createElement("div");
+          result.className = "result";
+          top.appendChild(result);
+          ui.result = result;
+
+          const middle = document.createElement("div");
+          middle.className = "mid-wrap";
+
           const mainButton = document.createElement("button");
           mainButton.className = "main-btn spin";
           mainButton.type = "button";
@@ -666,19 +697,14 @@
           mainButton.addEventListener("pointerdown", (e) => {
             if (state.actionMode === "stop") requestStop(e);
           });
-          top.appendChild(mainButton);
+          middle.appendChild(mainButton);
           ui.mainButton = mainButton;
 
-          const middle = document.createElement("div");
-          middle.className = "mid-wrap";
+          const bottom = document.createElement("div");
+          bottom.className = "bottom-controls";
 
-          const result = document.createElement("div");
-          result.className = "result";
-          middle.appendChild(result);
-          ui.result = result;
-
-          const toggles = document.createElement("div");
-          toggles.className = "toggles";
+          const togglesRow = document.createElement("div");
+          togglesRow.className = "bottom-toggles-row toggles";
 
           const randomLabel = document.createElement("label");
           const randomToggle = document.createElement("input");
@@ -702,12 +728,11 @@
           muteLabel.appendChild(document.createTextNode(" Mute"));
           ui.muteToggle = muteToggle;
 
-          toggles.appendChild(randomLabel);
-          toggles.appendChild(muteLabel);
-          middle.appendChild(toggles);
+          togglesRow.appendChild(randomLabel);
+          togglesRow.appendChild(muteLabel);
 
-          const bottom = document.createElement("div");
-          bottom.className = "bottom-controls";
+          const buttonsRow = document.createElement("div");
+          buttonsRow.className = "bottom-buttons-row";
 
           const reset = document.createElement("button");
           reset.className = "control-btn";
@@ -721,8 +746,11 @@
           fullscreen.addEventListener("click", toggleFullScreen);
           ui.fullscreenBtn = fullscreen;
 
-          bottom.appendChild(reset);
-          bottom.appendChild(fullscreen);
+          buttonsRow.appendChild(reset);
+          buttonsRow.appendChild(fullscreen);
+
+          bottom.appendChild(togglesRow);
+          bottom.appendChild(buttonsRow);
 
           center.appendChild(top);
           center.appendChild(middle);
